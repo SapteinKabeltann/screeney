@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website Screenshot Tool</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" href="/images/favicon.png" type="image/png">
+  <meta name="description" content="Capture screenshots of all endpoints of a website">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="container">
+        <div class="logo">
+          <img src="/images/logo.svg" alt="Website Screenshot Tool">
+          <h1>Website Screenshot Tool</h1>
+        </div>
+      </div>
+    </header>
+    
+    <main class="main">
+      <div class="container">
+        <section class="url-input-section">
+          <div class="card">
+            <h2>Capture Website Screenshots</h2>
+            <p>Enter a URL below to capture screenshots of all endpoints on the website.</p>
+            
+            <form id="screenshot-form" class="screenshot-form">
+              <div class="form-group">
+                <label for="url-input">Website URL</label>
+                <div class="url-input-container">
+                  <input type="url" id="url-input" placeholder="https://example.com" required>
+                  <button type="submit" id="capture-btn" class="btn btn-primary">
+                    <span class="btn-text">Capture Screenshots</span>
+                    <span class="btn-icon">→</span>
+                  </button>
+                </div>
+                <div class="form-hint">We'll navigate through the site and capture all reachable pages</div>
+              </div>
+            </form>
+          </div>
+        </section>
+        
+        <section id="progress-section" class="progress-section hidden">
+          <div class="card">
+            <h2>Capturing Screenshots</h2>
+            <p id="status-text">Processing website...</p>
+            
+            <div class="progress-container">
+              <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+              <div class="progress-text" id="progress-text">Initializing...</div>
+            </div>
+            
+            <div class="progress-details" id="progress-details"></div>
+          </div>
+        </section>
+        
+        <section id="results-section" class="results-section hidden">
+          <div class="card">
+            <div class="results-header">
+              <h2>Screenshot Results</h2>
+              <div class="results-actions">
+                <button id="download-all-btn" class="btn btn-secondary">
+                  <span class="btn-icon">↓</span>
+                  <span class="btn-text">Download All</span>
+                </button>
+              </div>
+            </div>
+            
+            <div class="domain-info" id="domain-info"></div>
+            
+            <div class="gallery" id="screenshot-gallery"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+    
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; 2025 Website Screenshot Tool. All rights reserved.</p>
+      </div>
+    </footer>
+  </div>
+  
+  <div id="overlay" class="overlay hidden">
+    <div id="modal" class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Screenshot Preview</h3>
+        <button id="modal-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-content" class="modal-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="modal-download" class="btn btn-primary">Download</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/app.js" type="module"></script>
+</body>
+</html>
