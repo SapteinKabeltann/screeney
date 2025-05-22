@@ -90,4 +90,19 @@ function initApp() {
   document.querySelectorAll('.card').forEach(card => {
     card.classList.add('fade-in');
   });
+
+  // Initialize WebSocket connection
+  const socket = new WebSocket('ws://localhost:3000');
+
+  socket.addEventListener('open', (event) => {
+    console.log('WebSocket is open now.');
+  });
+
+  socket.addEventListener('message', (event) => {
+    const data = JSON.parse(event.data);
+    console.log('Message from server ', data);
+    
+    // Update progress details with received status
+    elements.progressDetails.innerHTML = `Status: ${data.status}`;
+  });
 }

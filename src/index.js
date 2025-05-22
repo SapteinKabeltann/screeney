@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const { setupRoutes } = require('./routes');
 const { errorHandler } = require('./middleware/errorHandler');
 const { createFolders } = require('./utils/fileSystem');
+const WebSocket = require('ws');
 
 // Create necessary folders for the application
 createFolders();
@@ -48,9 +49,31 @@ setupRoutes(app);
 // Error handling middleware (should be after routes)
 app.use(errorHandler);
 
-// Start the server
-app.listen(PORT, () => {
+// Create WebSocket server
+const wss = new WebSocket.Server({ noServer: true });
+
+// Handle WebSocket connections
+wss.on('connection', (ws) => {
+  console.log('WebSocket connection established');
+
+  // Send status updates to client
+  ws.on('message', (message) => {
+    console.log('received: %s', message);
+  });
+
+  // Example: Send a message to the client
+  ws.send(JSON.stringify({ status: 'connected' }));
+});
+
+// Upgrade HTTP server to handle WebSocket connections
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+});
+
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
 });
 
 module.exports = app;
