@@ -169,6 +169,36 @@ body {
   color: var(--color-text-primary);
 }
 
+.page-limit-group {
+  margin-top: var(--spacing-md);
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.number-input {
+  width: 80px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-size-md);
+}
+
+.number-input:disabled {
+  background-color: var(--color-secondary);
+  cursor: not-allowed;
+}
+
 .url-input-container {
   display: flex;
   gap: var(--spacing-md);
@@ -215,6 +245,23 @@ input[type="url"]:focus {
 .btn-primary {
   background-color: var(--color-primary);
   color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.btn-primary .loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+.btn-primary:disabled {
+  background-color: var(--color-text-tertiary);
+  cursor: not-allowed;
 }
 
 .btn-primary:hover {
@@ -223,11 +270,6 @@ input[type="url"]:focus {
 
 .btn-primary:active {
   background-color: var(--color-primary-dark);
-}
-
-.btn-primary:disabled {
-  background-color: var(--color-text-tertiary);
-  cursor: not-allowed;
 }
 
 .btn-secondary {

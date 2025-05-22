@@ -15,7 +15,7 @@ const screenshotController = {
    */
   captureScreenshots: async (req, res) => {
     try {
-      const { url } = req.body;
+      const { url, pageLimit } = req.body;
       const jobId = uuidv4();
       const domain = getUrlDomain(url);
       
@@ -24,6 +24,7 @@ const screenshotController = {
         status: 'processing',
         url,
         domain,
+        pageLimit: pageLimit || null,
         startTime: new Date(),
         screenshots: [],
         error: null
@@ -33,11 +34,12 @@ const screenshotController = {
       res.status(202).json({ 
         jobId, 
         message: 'Screenshot capture initiated',
-        status: 'processing'
+        status: 'processing',
+        pageLimit: pageLimit || null
       });
       
       // Start the capture process asynchronously
-      captureScreenshots(url, jobId)
+      captureScreenshots(url, jobId, pageLimit)
         .then(results => {
           const job = jobs.get(jobId);
           job.status = 'completed';
@@ -133,9 +135,9 @@ const screenshotController = {
       
       const zip = new JSZip();
       
-      // Add each screenshot to the ZIP
+      // Add each HD screenshot to the ZIP
       for (const screenshot of job.screenshots) {
-        const imageData = fs.readFileSync(path.join(__dirname, '../../', screenshot.path));
+        const imageData = fs.readFileSync(path.join(__dirname, '../../', screenshot.hdPath));
         const filename = sanitize(`${screenshot.title || 'screenshot'}-${screenshot.id}.png`);
         zip.file(filename, imageData);
       }
@@ -172,13 +174,13 @@ const screenshotController = {
         return res.status(400).json({ error: 'Screenshots are not ready yet' });
       }
       
-      const screenshot = job.screenshots.find(s => path.basename(s.path) === filename);
+      const screenshot = job.screenshots.find(s => path.basename(s.hdPath) === filename);
       
       if (!screenshot) {
         return res.status(404).json({ error: 'Screenshot not found' });
       }
       
-      const filePath = path.join(__dirname, '../../', screenshot.path);
+      const filePath = path.join(__dirname, '../../', screenshot.hdPath);
       
       // Set headers for download
       res.setHeader('Content-Disposition', `attachment; filename=${sanitize(screenshot.title || 'screenshot')}.png`);

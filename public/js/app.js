@@ -15,6 +15,8 @@ function initApp() {
     form: document.getElementById('screenshot-form'),
     urlInput: document.getElementById('url-input'),
     captureBtn: document.getElementById('capture-btn'),
+    limitCheckbox: document.getElementById('limit-pages'),
+    pageLimit: document.getElementById('page-limit'),
     progressSection: document.getElementById('progress-section'),
     progressFill: document.getElementById('progress-fill'),
     progressText: document.getElementById('progress-text'),
@@ -29,6 +31,17 @@ function initApp() {
     }
   };
   
+  // Set initial state for page limit
+  elements.pageLimit.disabled = !elements.limitCheckbox.checked;
+  
+  // Add event listener for checkbox
+  elements.limitCheckbox.addEventListener('change', (e) => {
+    elements.pageLimit.disabled = !e.target.checked;
+    if (!e.target.checked) {
+      elements.pageLimit.value = '10';
+    }
+  });
+  
   // Set up each module with the necessary elements
   const formHandler = setupForm(elements);
   const progressTracker = setupProgressTracking(elements);
@@ -41,6 +54,10 @@ function initApp() {
       // Reset UI and show progress section
       elements.progressSection.classList.remove('hidden');
       endpointsHandler.reset();
+      
+      // Get page limit if enabled
+      const useLimit = elements.limitCheckbox.checked;
+      const pageLimit = useLimit ? parseInt(elements.pageLimit.value) : null;
       
       // Initialize WebSocket connection
       const socket = new WebSocket('ws://localhost:3000');
@@ -100,8 +117,66 @@ function initApp() {
   });
 
   // Connect download button to action
-  endpointsHandler.onDownloadAll((jobId) => {
-    window.location.href = `/api/download/${jobId}`;
+  endpointsHandler.onDownloadAll(async (jobId) => {
+    console.log('Download callback triggered in app.js');
+    try {
+      console.log('Starting download process in app.js for job:', jobId);
+      const apiUrl = `/api/download/${jobId}`;
+      console.log('Making fetch request to:', apiUrl);
+      
+      const response = await fetch(apiUrl);
+      console.log('Fetch response received:', {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+      
+      // Get the filename from the Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      console.log('Content-Disposition header:', contentDisposition);
+      
+      const filename = contentDisposition
+        ? contentDisposition.split('filename=')[1].replace(/["']/g, '')
+        : `screenshots-${jobId}.zip`;
+      console.log('Using filename:', filename);
+      
+      // Convert the response to a blob
+      console.log('Converting response to blob...');
+      const blob = await response.blob();
+      console.log('Blob created:', {
+        size: blob.size,
+        type: blob.type
+      });
+      
+      // Create a download link and trigger it
+      console.log('Creating download URL and link...');
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      
+      console.log('Triggering download...');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('Cleaning up...');
+      window.URL.revokeObjectURL(downloadUrl);
+      
+      console.log('Download process completed successfully');
+    } catch (error) {
+      console.error('Download process failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      alert('Failed to download screenshots. Please try again.');
+    }
   });
   
   // Add subtle animations for loaded elements

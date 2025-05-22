@@ -55,10 +55,10 @@ async function processEndpoint(url, page, context, jobId, screenshotsDir, thumbn
     
     // Take a screenshot
     const screenshotId = uuidv4();
-    const screenshotPath = path.join(screenshotsDir, `${screenshotId}.png`);
+    const hdPath = path.join(screenshotsDir, 'hd', `${screenshotId}.png`);
     const thumbnailPath = path.join(thumbnailsDir, `${screenshotId}.png`);
     
-    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await page.screenshot({ path: hdPath, fullPage: true });
     
     // Create a thumbnail with smaller size
     const thumbnailPage = await context.newPage();
@@ -86,7 +86,7 @@ async function processEndpoint(url, page, context, jobId, screenshotsDir, thumbn
       id: screenshotId,
       title: title,
       url: url,
-      path: screenshotPath,
+      hdPath: hdPath,
       thumbnailPath: thumbnailPath
     };
 
@@ -99,8 +99,8 @@ async function processEndpoint(url, page, context, jobId, screenshotsDir, thumbn
       status: 'completed',
       screenshot: {
         ...screenshot,
-        thumbnailUrl: `/screenshots/${jobId}/thumbnails/${path.basename(screenshotPath)}`,
-        fullImageUrl: `/screenshots/${jobId}/${screenshotId}.png`
+        thumbnailUrl: `/screenshots/${jobId}/thumbnails/${screenshotId}.png`,
+        fullImageUrl: `/screenshots/${jobId}/hd/${screenshotId}.png`
       }
     });
 
@@ -123,9 +123,10 @@ async function processEndpoint(url, page, context, jobId, screenshotsDir, thumbn
  * Capture screenshots of a website and its endpoints
  * @param {string} startUrl - The URL to start crawling from
  * @param {string} jobId - Unique identifier for the screenshot job
+ * @param {number} pageLimit - Optional limit for number of pages to capture
  * @returns {Promise<Object>} - Object containing results of the screenshot process
  */
-async function captureScreenshots(startUrl, jobId) {
+async function captureScreenshots(startUrl, jobId, pageLimit = null) {
   const browser = await chromium.launch({
     headless: true
   });
@@ -139,9 +140,11 @@ async function captureScreenshots(startUrl, jobId) {
     
     // Create directories for screenshots
     const screenshotsDir = path.join('public', 'screenshots', jobId);
+    const hdDir = path.join(screenshotsDir, 'hd');
     const thumbnailsDir = path.join(screenshotsDir, 'thumbnails');
     
     ensureDirectoryExists(screenshotsDir);
+    ensureDirectoryExists(hdDir);
     ensureDirectoryExists(thumbnailsDir);
     
     // Keep track of visited URLs to avoid duplicates
@@ -149,11 +152,11 @@ async function captureScreenshots(startUrl, jobId) {
     const pendingUrls = [normalizedUrl];
     const screenshots = [];
     
-    // Limit the number of pages to crawl
-    const MAX_PAGES = 10;
+    // Use pageLimit if provided, otherwise default to MAX_PAGES
+    const maxPages = pageLimit || MAX_PAGES;
     
     // Process URLs in queue
-    while (pendingUrls.length > 0 && visitedUrls.size < MAX_PAGES) {
+    while (pendingUrls.length > 0 && visitedUrls.size < maxPages) {
       const currentUrl = pendingUrls.shift();
       
       if (visitedUrls.has(currentUrl) || !isValidUrl(currentUrl)) {
@@ -177,6 +180,11 @@ async function captureScreenshots(startUrl, jobId) {
       }
 
       screenshots.push(result.screenshot);
+      
+      // If we've reached the page limit, stop crawling for more URLs
+      if (screenshots.length >= maxPages) {
+        break;
+      }
       
       // Extract links to other pages on the same domain
       const $ = cheerio.load(result.html);
@@ -214,13 +222,17 @@ async function captureScreenshots(startUrl, jobId) {
     // Send complete message when all screenshots are taken
     broadcastMessage({
       type: 'complete',
-      message: 'All screenshots captured'
+      message: 'All screenshots captured',
+      totalPages: screenshots.length,
+      limitReached: screenshots.length >= maxPages
     });
     
     return {
       url: startUrl,
       domain,
-      screenshots
+      screenshots,
+      totalPages: screenshots.length,
+      limitReached: screenshots.length >= maxPages
     };
   } finally {
     await browser.close();

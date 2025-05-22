@@ -19,7 +19,8 @@ export function setupEndpoints(elements) {
       <div class="endpoints-actions">
         <span class="screenshot-count">0 screenshots</span>
         <button id="download-all-btn" class="btn btn-primary" disabled>
-          Download All
+          <span class="btn-icon">↓</span>
+          <span class="btn-text">Download All</span>
         </button>
       </div>
     </div>
@@ -32,9 +33,39 @@ export function setupEndpoints(elements) {
   const screenshotCountEl = endpointsContainer.querySelector('.screenshot-count');
   
   // Add click handler for download button
-  downloadAllBtn.addEventListener('click', () => {
+  downloadAllBtn.addEventListener('click', async (event) => {
+    event.preventDefault();
+    console.log('Download button clicked');
+    console.log('Current job ID:', currentJobId);
+    console.log('Download callback exists:', !!downloadAllCallback);
+    
     if (downloadAllCallback && currentJobId) {
-      downloadAllCallback(currentJobId);
+      console.log('Starting download process...');
+      // Disable button and show loading state
+      downloadAllBtn.disabled = true;
+      const originalText = downloadAllBtn.innerHTML;
+      downloadAllBtn.innerHTML = `
+        <div class="loading-spinner"></div>
+        <span>Downloading...</span>
+      `;
+      
+      try {
+        console.log('Calling download callback with jobId:', currentJobId);
+        await downloadAllCallback(currentJobId);
+        console.log('Download callback completed successfully');
+      } catch (error) {
+        console.error('Error in download process:', error);
+      } finally {
+        console.log('Resetting button state');
+        // Reset button state
+        downloadAllBtn.disabled = false;
+        downloadAllBtn.innerHTML = originalText;
+      }
+    } else {
+      console.warn('Download button clicked but either callback or jobId is missing:', {
+        hasCallback: !!downloadAllCallback,
+        jobId: currentJobId
+      });
     }
   });
   
@@ -43,6 +74,7 @@ export function setupEndpoints(elements) {
    * @param {Object} data - Data about the endpoint
    */
   function addEndpoint(data) {
+    console.log('Adding new endpoint:', data);
     const endpointEl = document.createElement('div');
     endpointEl.className = 'endpoint-item loading';
     endpointEl.setAttribute('data-url', data.url);
@@ -65,14 +97,29 @@ export function setupEndpoints(elements) {
    * @param {Object} data - Data about the endpoint
    */
   function updateEndpoint(data) {
+    console.log('Updating endpoint:', data);
     const endpointEl = endpointsGrid.querySelector(`[data-url="${data.url}"]`);
-    if (!endpointEl) return;
+    if (!endpointEl) {
+      console.warn('Could not find endpoint element for URL:', data.url);
+      return;
+    }
     
     endpointEl.classList.remove('loading');
     endpointEl.classList.add('completed');
     
     // Add screenshot if available
     if (data.screenshot) {
+      // Extract jobId from the screenshot URL
+      const urlParts = data.screenshot.thumbnailUrl.split('/');
+      const jobId = urlParts[2]; // /screenshots/[jobId]/thumbnails/...
+      
+      console.log('Adding screenshot to endpoint:', {
+        url: data.url,
+        thumbnailUrl: data.screenshot.thumbnailUrl,
+        fullImageUrl: data.screenshot.fullImageUrl,
+        jobId: jobId
+      });
+      
       const thumbnailUrl = data.screenshot.thumbnailUrl;
       const fullImageUrl = data.screenshot.fullImageUrl;
       
@@ -95,19 +142,22 @@ export function setupEndpoints(elements) {
           onScreenshotClickCallback({
             title: data.title || data.url,
             fullImageUrl: fullImageUrl,
-            jobId: data.jobId,
+            jobId: jobId,
             id: data.id
           });
         }
       });
 
       // Enable download button when we have at least one image
+      console.log('Enabling download button and setting jobId:', jobId);
       downloadAllBtn.disabled = false;
-      currentJobId = data.jobId;
+      currentJobId = jobId;
       
       // Update screenshot count
       screenshotCount++;
       screenshotCountEl.textContent = `${screenshotCount} screenshot${screenshotCount !== 1 ? 's' : ''}`;
+    } else {
+      console.warn('No screenshot data available for endpoint:', data.url);
     }
   }
   
@@ -115,6 +165,7 @@ export function setupEndpoints(elements) {
    * Reset the endpoint view
    */
   function reset() {
+    console.log('Resetting endpoints view');
     endpointsGrid.innerHTML = '';
     downloadAllBtn.disabled = true;
     currentJobId = null;
@@ -135,6 +186,7 @@ export function setupEndpoints(elements) {
    * @param {Function} callback 
    */
   function onDownloadAll(callback) {
+    console.log('Registering download callback');
     downloadAllCallback = callback;
   }
   

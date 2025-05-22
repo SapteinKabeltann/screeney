@@ -4,7 +4,8 @@
  * @returns {Object} - Form handler methods
  */
 export function setupForm(elements) {
-  const { form, urlInput, captureBtn } = elements;
+  const { form, urlInput, captureBtn, limitCheckbox, pageLimit } = elements;
+  const MAX_UNCHECKED_PAGES = 300; // Maksimalt antall sider når unchecked
   
   let submitCallback = null;
   
@@ -76,6 +77,14 @@ export function setupForm(elements) {
     }, 5000);
   }
   
+  // Set up checkbox handler
+  limitCheckbox.addEventListener('change', (e) => {
+    if (!e.target.checked) {
+      pageLimit.value = '10'; // Reset to 10 when unchecking
+    }
+    pageLimit.disabled = !e.target.checked;
+  });
+  
   /**
    * Start the screenshot capture process
    * @param {string} url - The URL to capture
@@ -88,17 +97,19 @@ export function setupForm(elements) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({
+          url,
+          pageLimit: limitCheckbox.checked ? parseInt(pageLimit.value) : MAX_UNCHECKED_PAGES
+        })
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start capture process');
+        throw new Error('Failed to start capture process');
       }
       
       return await response.json();
     } catch (error) {
-      showError(error.message || 'An error occurred while starting the capture process');
+      console.error('Error starting capture:', error);
       throw error;
     }
   }
