@@ -1,116 +1,95 @@
 /**
  * Setup progress tracking for the screenshot capture process
- * @param {Object} elements - DOM elements
  * @returns {Object} - Progress tracking methods
  */
-export function setupProgressTracking(elements) {
-  const { 
-    progressSection, 
-    progressFill, 
-    progressText, 
-    progressDetails,
-    resultsSection
-  } = elements;
+export function setupProgressTracking() {
+  let startTime = null;
+  let progressInterval = null;
+  let totalEndpoints = 0;
+  let completedEndpoints = 0;
   
-  let trackingInterval = null;
-  let jobId = null;
-  let completionCallback = null;
+  const progressBar = document.querySelector('.progress-bar');
+  const progressSection = document.querySelector('.progress-section');
+  const progressDetails = document.querySelector('.progress-details');
+  const progressFill = document.querySelector('.progress-fill');
+  const progressText = document.querySelector('.progress-text');
+
+  /**
+   * Format seconds to mm:ss
+   * @param {number} seconds 
+   * @returns {string}
+   */
+  function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+
+  /**
+   * Update elapsed time display
+   */
+  function updateElapsedTime() {
+    if (!startTime) return;
+    const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+    progressText.textContent = `Tid brukt: ${formatTime(elapsedSeconds)}`;
+  }
   
   /**
    * Start tracking progress for a job
-   * @param {string} id - The job ID to track
-   * @param {Function} onComplete - Callback when job completes
    */
-  function startTracking(id, onComplete) {
-    jobId = id;
-    completionCallback = onComplete;
+  function startTracking() {
+    startTime = Date.now();
+    totalEndpoints = 0;
+    completedEndpoints = 0;
     
     // Reset progress UI
     progressFill.style.width = '0%';
-    progressText.textContent = 'Initializing...';
-    progressDetails.textContent = 'Setting up screenshot capture process';
+    progressFill.style.backgroundColor = 'var(--color-primary)';
+    progressText.textContent = 'Tid brukt: 0:00';
+    progressDetails.textContent = 'Initialiserer...';
     
     // Show progress section
     progressSection.classList.remove('hidden');
-    resultsSection.classList.add('hidden');
-    
-    // Add animation
     progressSection.classList.add('slide-up');
-    
-    // Start polling for job status
-    if (trackingInterval) {
-      clearInterval(trackingInterval);
+
+    if (progressInterval) {
+      clearInterval(progressInterval);
     }
-    
-    updateProgress();
-    trackingInterval = setInterval(updateProgress, 2000);
+    progressInterval = setInterval(updateElapsedTime, 1000);
+  }
+
+  /**
+   * Add a new endpoint to track
+   */
+  function addEndpoint() {
+    totalEndpoints++;
+    updateProgressBar();
   }
   
   /**
-   * Stop tracking progress
+   * Update progress when a new screenshot is taken
    */
-  function stopTracking() {
-    if (trackingInterval) {
-      clearInterval(trackingInterval);
-      trackingInterval = null;
-    }
+  function updateProgress() {
+    completedEndpoints++;
+    updateProgressBar();
   }
   
   /**
-   * Update progress from the server
+   * Complete the tracking process
    */
-  async function updateProgress() {
-    if (!jobId) return;
-    
-    try {
-      const response = await fetch(`/api/status/${jobId}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to get job status');
-      }
-      
-      const data = await response.json();
-      updateProgressUI(data);
-      
-      // Check if job is complete or failed
-      if (data.status === 'completed' || data.status === 'failed') {
-        stopTracking();
-        
-        if (data.status === 'completed' && typeof completionCallback === 'function') {
-          completionCallback(data);
-        } else if (data.status === 'failed') {
-          showError(data.error || 'The screenshot capture process failed');
-        }
-      }
-    } catch (error) {
-      console.error('Error updating progress:', error);
+  function complete() {
+    if (progressInterval) {
+      clearInterval(progressInterval);
     }
-  }
-  
-  /**
-   * Update the progress UI based on job status
-   * @param {Object} data - Job status data
-   */
-  function updateProgressUI(data) {
-    // Set progress percentage (use a placeholder if no count available)
-    const progressPercent = data.screenshotsCount 
-      ? Math.min(Math.max((data.screenshotsCount / 10) * 100, 10), 100)
-      : 10;
-    
-    progressFill.style.width = `${progressPercent}%`;
-    
-    // Update status text
-    if (data.status === 'processing') {
-      progressText.textContent = `Processing: ${data.screenshotsCount || 0} screenshots captured`;
-      progressDetails.textContent = `Capturing screenshots for ${data.domain || 'website'}`;
-    } else if (data.status === 'completed') {
-      progressText.textContent = `Complete: ${data.screenshotsCount} screenshots captured`;
+
+    // Vent litt før vi viser 100% for å gi en smooth overgang
+    setTimeout(() => {
+      const totalSeconds = Math.floor((Date.now() - startTime) / 1000);
       progressFill.style.width = '100%';
-    } else if (data.status === 'failed') {
-      progressText.textContent = 'Failed to capture screenshots';
-      progressDetails.textContent = data.error || 'An error occurred during the capture process';
-      progressFill.style.backgroundColor = 'var(--color-error)';
-    }
+      progressFill.style.backgroundColor = 'var(--color-success)';
+      progressDetails.innerHTML = `<span style="color: var(--color-success)">Completed! Found ${totalEndpoints} pages.</span>`;
+      progressText.innerHTML = `<span style="color: var(--color-success)">✓ Used time ${formatTime(totalSeconds)}</span>`;
+    }, 500);
   }
   
   /**
@@ -118,15 +97,27 @@ export function setupProgressTracking(elements) {
    * @param {string} message - Error message to display
    */
   function showError(message) {
-    progressText.textContent = 'Error';
+    if (progressInterval) {
+      clearInterval(progressInterval);
+    }
+    
+    progressText.textContent = 'Failed';
     progressDetails.textContent = message;
     progressFill.style.backgroundColor = 'var(--color-error)';
     progressFill.style.width = '100%';
   }
   
+  function updateProgressBar() {
+    if (totalEndpoints === 0) return;
+    const progress = (completedEndpoints / totalEndpoints) * 90;
+    progressFill.style.width = `${Math.min(90, progress)}%`;
+  }
+
   return {
     startTracking,
-    stopTracking,
+    addEndpoint,
+    updateProgress,
+    complete,
     showError
   };
 }

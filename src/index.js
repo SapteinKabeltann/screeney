@@ -8,49 +8,47 @@ const { setupRoutes } = require('./routes');
 const { errorHandler } = require('./middleware/errorHandler');
 const { createFolders } = require('./utils/fileSystem');
 const WebSocket = require('ws');
+const { setWebSocketServer } = require('./services/screenshotService');
 
 // Create necessary folders for the application
 createFolders();
 
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "img-src": ["'self'", "data:", "blob:"],
-      "script-src": ["'self'", "'unsafe-inline'"]
-    }
-  }
+  contentSecurityPolicy: false
 }));
 
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again after 15 minutes'
+  max: 100 // limit each IP to 100 requests per windowMs
 });
 app.use('/api/', limiter);
 
 // Middleware
 app.use(compression());
+app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
-app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve static files
+app.use(express.static('public'));
 
 // Setup routes
 setupRoutes(app);
 
-// Error handling middleware (should be after routes)
+// Error handling
 app.use(errorHandler);
 
 // Create WebSocket server
 const wss = new WebSocket.Server({ noServer: true });
+
+// Koble WebSocket til screenshotService
+setWebSocketServer(wss);
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
@@ -60,9 +58,6 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     console.log('received: %s', message);
   });
-
-  // Example: Send a message to the client
-  ws.send(JSON.stringify({ status: 'connected' }));
 });
 
 // Upgrade HTTP server to handle WebSocket connections

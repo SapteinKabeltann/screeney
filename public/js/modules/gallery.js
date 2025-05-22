@@ -15,6 +15,35 @@ export function setupGallery(elements) {
   let currentScreenshots = [];
   
   /**
+   * Legg til et enkelt screenshot i galleriet
+   * @param {Object} screenshot - Screenshot data
+   */
+  function addScreenshot(screenshot) {
+    const galleryItem = document.createElement('div');
+    galleryItem.className = 'gallery-item slide-up';
+    
+    galleryItem.innerHTML = `
+      <img src="${screenshot.thumbnailUrl}" alt="${screenshot.title || 'Screenshot'}">
+      <div class="gallery-item-info">
+        <div class="gallery-item-title">${screenshot.title || 'Untitled'}</div>
+        <div class="gallery-item-url">${screenshot.url}</div>
+      </div>
+    `;
+    
+    galleryItem.addEventListener('click', () => {
+      if (clickCallback) {
+        clickCallback({
+          ...screenshot,
+          jobId: currentJobId
+        });
+      }
+    });
+    
+    screenshotGallery.appendChild(galleryItem);
+    currentScreenshots.push(screenshot);
+  }
+  
+  /**
    * Fetch screenshots for a job
    * @param {string} jobId - The job ID
    * @returns {Promise<Object>} - Screenshots data
@@ -59,60 +88,7 @@ export function setupGallery(elements) {
       return;
     }
     
-    // Add each screenshot to the gallery
-    currentScreenshots.forEach((screenshot, index) => {
-      const galleryItem = document.createElement('div');
-      galleryItem.className = 'gallery-item';
-      galleryItem.dataset.id = screenshot.id;
-      galleryItem.dataset.index = index;
-      
-      // Create thumbnail
-      const img = document.createElement('img');
-      img.src = screenshot.thumbnailUrl;
-      img.alt = screenshot.title || 'Website screenshot';
-      img.loading = 'lazy';
-      
-      // Create info section
-      const info = document.createElement('div');
-      info.className = 'gallery-item-info';
-      
-      const title = document.createElement('div');
-      title.className = 'gallery-item-title';
-      title.textContent = screenshot.title || 'Untitled Page';
-      
-      const url = document.createElement('div');
-      url.className = 'gallery-item-url';
-      url.textContent = screenshot.url;
-      
-      // Assemble the gallery item
-      info.appendChild(title);
-      info.appendChild(url);
-      galleryItem.appendChild(img);
-      galleryItem.appendChild(info);
-      
-      // Add click handler
-      galleryItem.addEventListener('click', () => {
-        if (typeof clickCallback === 'function') {
-          clickCallback({
-            ...screenshot,
-            jobId: currentJobId
-          });
-        }
-      });
-      
-      // Add to gallery with a staggered animation
-      galleryItem.style.opacity = '0';
-      galleryItem.style.transform = 'translateY(20px)';
-      
-      screenshotGallery.appendChild(galleryItem);
-      
-      // Trigger animation with a staggered delay
-      setTimeout(() => {
-        galleryItem.style.transition = 'opacity 250ms ease, transform 250ms ease';
-        galleryItem.style.opacity = '1';
-        galleryItem.style.transform = 'translateY(0)';
-      }, index * 50);
-    });
+    currentScreenshots.forEach(screenshot => addScreenshot(screenshot));
   }
   
   /**
@@ -152,6 +128,7 @@ export function setupGallery(elements) {
      */
     onScreenshotClick(callback) {
       clickCallback = callback;
-    }
+    },
+    addScreenshot
   };
 }
